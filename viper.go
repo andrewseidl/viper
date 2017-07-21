@@ -24,14 +24,12 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/afero"
 	"github.com/spf13/cast"
@@ -162,8 +160,6 @@ type Viper struct {
 	env            map[string]string
 	aliases        map[string]string
 	typeByDefValue bool
-
-	onConfigChange func(fsnotify.Event)
 }
 
 // New returns an initialized Viper instance.
@@ -232,56 +228,6 @@ var SupportedExts = []string{"json", "toml", "yaml", "yml", "properties", "props
 
 // SupportedRemoteProviders are universally supported remote providers.
 var SupportedRemoteProviders = []string{"etcd", "consul"}
-
-func OnConfigChange(run func(in fsnotify.Event)) { v.OnConfigChange(run) }
-func (v *Viper) OnConfigChange(run func(in fsnotify.Event)) {
-	v.onConfigChange = run
-}
-
-func WatchConfig() { v.WatchConfig() }
-func (v *Viper) WatchConfig() {
-	go func() {
-		watcher, err := fsnotify.NewWatcher()
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer watcher.Close()
-
-		// we have to watch the entire directory to pick up renames/atomic saves in a cross-platform way
-		filename, err := v.getConfigFile()
-		if err != nil {
-			log.Println("error:", err)
-			return
-		}
-
-		configFile := filepath.Clean(filename)
-		configDir, _ := filepath.Split(configFile)
-
-		done := make(chan bool)
-		go func() {
-			for {
-				select {
-				case event := <-watcher.Events:
-					// we only care about the config file
-					if filepath.Clean(event.Name) == configFile {
-						if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Create == fsnotify.Create {
-							err := v.ReadInConfig()
-							if err != nil {
-								log.Println("error:", err)
-							}
-							v.onConfigChange(event)
-						}
-					}
-				case err := <-watcher.Errors:
-					log.Println("error:", err)
-				}
-			}
-		}()
-
-		watcher.Add(configDir)
-		<-done
-	}()
-}
 
 // SetConfigFile explicitly defines the path, name and extension of the config file
 // Viper will use this and not check any of the config paths
