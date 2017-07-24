@@ -1,3 +1,7 @@
+This is a temporary fork of https://github.com/spf13/viper with the following changes:
+- removal of fsnotify support
+- merge of https://github.com/spf13/viper/pull/331/
+
 ![viper logo](https://cloud.githubusercontent.com/assets/173412/10886745/998df88a-8151-11e5-9448-4736db51020d.png)
 
 Go configuration with fangs!
